@@ -15,6 +15,7 @@ import com.parkinson.app.R
 import com.parkinson.app.ui.components.LargeButton
 import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 import java.io.File
 
 @Composable
@@ -91,6 +92,28 @@ fun ReportScreen() {
                     context.startActivity(Intent.createChooser(share, context.getString(R.string.compartir_informe)))
                 })
             }
+            LargeButton(text = "Analizar con Parkibot", onClick = {
+                scope.launch {
+                    try {
+                        val tremor = app.tremorDao.observeAll().first()
+                        val intakes = app.medicationRepository.getAllIntakes()
+                        val sb = StringBuilder()
+                        sb.append("Informe Parkinson Monitor (${selectedDays} dias)\n")
+                        sb.append("Tomas de medicacion: ${intakes.size}\n")
+                        tremor.take(20).forEach { t ->
+                            sb.append("Temblor ${t.mode}: score=${"%.0f".format(t.score)}, freq=${"%.2f".format(t.peakFreqHz)} Hz, fecha=${java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault()).format(java.util.Date(t.timestamp))}\n")
+                        }
+                        sb.append("\nAnaliza este informe para optimizar la toma de medicamentos y horarios, cruzando datos de sueno y ejercicio y buscando correspondencias con las tomas de medicamentos.")
+                        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Parkinson report", sb.toString()))
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://parkibot.com/"))
+                        context.startActivity(intent)
+                        android.widget.Toast.makeText(context, "Resumen copiado. Pegalo en Parkibot para analizar.", android.widget.Toast.LENGTH_LONG).show()
+                    } catch (e: Exception) {
+                        android.widget.Toast.makeText(context, "No se pudo abrir Parkibot: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+                    }
+                }
+            })
         }
 
         status?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
