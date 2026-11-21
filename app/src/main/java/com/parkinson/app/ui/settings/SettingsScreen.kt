@@ -37,6 +37,7 @@ fun SettingsScreen() {
     var selectedLang by remember { mutableStateOf(LanguageManager.get(context)) }
     var selectedPalette by remember { mutableStateOf(AppSettings.colorPalette.value) }
     var selectedScale by remember { mutableStateOf(AppSettings.textScale.value) }
+    var aiKey by remember { mutableStateOf(AppSettings.aiApiKey.value) }
     val app = context.applicationContext as ParkinsonApp
     val scope = rememberCoroutineScope()
     var healthAvailable by remember { mutableStateOf(false) }
@@ -209,6 +210,18 @@ fun SettingsScreen() {
         }
 
         Spacer(Modifier.height(8.dp))
+        Text("Analisis con IA (OpenAI)", style = MaterialTheme.typography.titleLarge)
+        OutlinedTextField(
+            value = aiKey,
+            onValueChange = { aiKey = it },
+            label = { Text("Clave API de OpenAI") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Button(onClick = { AppSettings.applyApiKey(context, aiKey) }) {
+            Text("Guardar clave")
+        }
+        Text("La clave se guarda localmente. Necesaria para 'Analizar con IA'.", style = MaterialTheme.typography.bodySmall)
+
         Text(stringResource(R.string.backup_title), style = MaterialTheme.typography.titleLarge)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = { createBackupLauncher.launch("parkinson_backup.zip") }) {
