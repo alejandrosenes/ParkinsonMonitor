@@ -67,6 +67,19 @@ fun ReportScreen() {
 
         generatedFile?.let { f ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                LargeButton(text = "Ver informe", onClick = {
+                    try {
+                        val authority = "${app.packageName}.fileprovider"
+                        val uri: Uri = FileProvider.getUriForFile(context, authority, f)
+                        val view = Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(uri, "application/pdf")
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        context.startActivity(Intent.createChooser(view, "Ver informe"))
+                    } catch (e: Exception) {
+                        android.widget.Toast.makeText(context, "No se pudo abrir: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+                    }
+                })
                 LargeButton(text = stringResource(R.string.compartir_pdf), onClick = {
                     val authority = "${app.packageName}.fileprovider"
                     val uri: Uri = FileProvider.getUriForFile(context, authority, f)
