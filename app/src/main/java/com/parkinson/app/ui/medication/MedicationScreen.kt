@@ -60,6 +60,9 @@ fun MedicationScreen() {
     var editingSchedule by remember { mutableStateOf<com.parkinson.app.data.local.database.entities.MedicationSchedule?>(null) }
     var editingCustomMed by remember { mutableStateOf<com.parkinson.app.ui.medication.MedItem?>(null) }
     var adjustingMed by remember { mutableStateOf<com.parkinson.app.ui.medication.MedItem?>(null) }
+    var pendingCustomMed by remember { mutableStateOf<com.parkinson.app.ui.medication.MedItem?>(null) }
+    var pendingSchedule by remember { mutableStateOf<com.parkinson.app.data.local.database.entities.MedicationSchedule?>(null) }
+    var pendingIntake by remember { mutableStateOf<com.parkinson.app.data.local.database.entities.MedicationIntake?>(null) }
     var selectedTab by remember { mutableStateOf(0) }
     var histStart by remember { mutableStateOf("") }
     var histEnd by remember { mutableStateOf("") }
@@ -121,10 +124,7 @@ fun MedicationScreen() {
                                         Text(stringResource(R.string.editar))
                                     }
                                     if (isCustom) {
-                                        OutlinedButton(onClick = {
-                                            CustomMedStore.remove(context, med.name)
-                                            customTick++
-                                        }) { Text(stringResource(R.string.x)) }
+                                        OutlinedButton(onClick = { pendingCustomMed = med }) { Text(stringResource(R.string.x)) }
                                     }
                                 }
                             }
@@ -150,7 +150,7 @@ fun MedicationScreen() {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Button(onClick = { markTakenWithEffect(s.name, s.doseMg) }) { Text(stringResource(R.string.tomar)) }
                                     TextButton(onClick = { editingSchedule = s }) { Text(stringResource(R.string.editar)) }
-                                    OutlinedButton(onClick = { vm.removeSchedule(s.id) }) { Text(stringResource(R.string.x)) }
+                                    OutlinedButton(onClick = { pendingSchedule = s }) { Text(stringResource(R.string.x)) }
                                 }
                             }
                         }
@@ -243,7 +243,7 @@ fun MedicationScreen() {
                                     Text(SimpleDateFormat("dd/MM HH:mm", Locale.getDefault()).format(Date(intake.intakeTimeMillis)), style = MaterialTheme.typography.bodyMedium)
                                 }
                                 TextButton(onClick = { editingIntake = intake }) { Text(stringResource(R.string.editar)) }
-                                TextButton(onClick = { vm.deleteIntake(intake) }) { Text(stringResource(R.string.anular)) }
+                                TextButton(onClick = { pendingIntake = intake }) { Text(stringResource(R.string.anular)) }
                             }
                         }
                     }
@@ -477,6 +477,59 @@ fun MedicationScreen() {
             }
         )
     }
+
+    pendingCustomMed?.let { med ->
+        AlertDialog(
+            onDismissRequest = { pendingCustomMed = null },
+            title = { Text("Eliminar medicamento") },
+            text = { Text("¿Estás seguro de eliminar ${med.name}?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    CustomMedStore.remove(context, med.name)
+                    customTick++
+                    pendingCustomMed = null
+                }) { Text("Sí") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingCustomMed = null }) { Text("No") }
+            }
+        )
+    }
+
+    pendingSchedule?.let { s ->
+        AlertDialog(
+            onDismissRequest = { pendingSchedule = null },
+            title = { Text("Eliminar horario") },
+            text = { Text("¿Estás seguro de eliminar este horario?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.removeSchedule(s.id)
+                    pendingSchedule = null
+                }) { Text("Sí") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingSchedule = null }) { Text("No") }
+            }
+        )
+    }
+
+    pendingIntake?.let { intake ->
+        AlertDialog(
+            onDismissRequest = { pendingIntake = null },
+            title = { Text("Anular toma") },
+            text = { Text("¿Estás seguro de anular esta toma?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.deleteIntake(intake)
+                    pendingIntake = null
+                }) { Text("Sí") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingIntake = null }) { Text("No") }
+            }
+        )
+    }
+
     }
 }
 

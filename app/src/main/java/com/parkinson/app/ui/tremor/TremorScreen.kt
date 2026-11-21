@@ -48,6 +48,7 @@ fun TremorScreen() {
     val scope = rememberCoroutineScope()
     var history by remember { mutableStateOf(emptyList<com.parkinson.app.data.local.database.entities.TremorResultEntity>()) }
     var selectedHistory by remember { mutableStateOf<com.parkinson.app.data.local.database.entities.TremorResultEntity?>(null) }
+    var pendingTremor by remember { mutableStateOf<com.parkinson.app.data.local.database.entities.TremorResultEntity?>(null) }
     LaunchedEffect(Unit) {
         scope.launch { history = try { app.tremorDao.observeAll().first() } catch (_: Exception) { emptyList() } }
     }
@@ -344,6 +345,7 @@ fun TremorScreen() {
                 if (item.mode != "spiral") {
                     TextButton(onClick = { selectedHistory = item }) { Text("Ver grafica") }
                 }
+                TextButton(onClick = { pendingTremor = item }) { Text("Borrar") }
             }
         }
     }
@@ -378,6 +380,24 @@ fun TremorScreen() {
     }
     if (history.isEmpty()) {
         Text("Sin historico guardado", style = MaterialTheme.typography.bodyMedium)
+    }
+
+    pendingTremor?.let { t ->
+        AlertDialog(
+            onDismissRequest = { pendingTremor = null },
+            title = { Text("Borrar prueba") },
+            text = { Text("¿Estás seguro de borrar esta prueba de temblor?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    scope.launch {
+                        app.tremorDao.deleteById(t.id)
+                        history = app.tremorDao.observeAll().first()
+                        pendingTremor = null
+                    }
+                }) { Text("Sí") }
+            },
+            dismissButton = { TextButton(onClick = { pendingTremor = null }) { Text("No") } }
+        )
     }
 
     }

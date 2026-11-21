@@ -14,6 +14,9 @@ interface TremorDao {
     @Query("SELECT * FROM tremor_result ORDER BY timestamp DESC")
     fun observeAll(): Flow<List<TremorResultEntity>>
 
+    @Query("DELETE FROM tremor_result WHERE id = :id")
+    suspend fun deleteById(id: Long)
+
     @Query("DELETE FROM tremor_result")
     suspend fun clearAll()
 }

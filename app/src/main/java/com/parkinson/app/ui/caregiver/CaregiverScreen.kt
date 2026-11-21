@@ -53,6 +53,8 @@ fun CaregiverScreen() {
     var showCareEndPicker by remember { mutableStateOf(false) }
     var editingSymptom by remember { mutableStateOf<com.parkinson.app.domain.models.SymptomEpisode?>(null) }
     var editingIntake by remember { mutableStateOf<com.parkinson.app.data.local.database.entities.MedicationIntake?>(null) }
+    var pendingIntake by remember { mutableStateOf<com.parkinson.app.data.local.database.entities.MedicationIntake?>(null) }
+    var pendingSymptom by remember { mutableStateOf<com.parkinson.app.domain.models.SymptomEpisode?>(null) }
     var editIntakeDate by remember { mutableStateOf("") }
     var editIntakeHour by remember { mutableStateOf("0") }
     var editIntakeMinute by remember { mutableStateOf("0") }
@@ -315,7 +317,7 @@ fun CaregiverScreen() {
                             editIntakeMinute = cal.get(java.util.Calendar.MINUTE).toString().padStart(2, '0')
                             editIntakeDose = intake.doseMg.toString()
                         }) { Text("Editar") }
-                        TextButton(onClick = { vm.deleteIntake(intake) }) { Text(stringResource(R.string.anular)) }
+                        TextButton(onClick = { pendingIntake = intake }) { Text(stringResource(R.string.anular)) }
                         }
                     }
                     ev.symptom?.let { symp ->
@@ -331,15 +333,7 @@ fun CaregiverScreen() {
                             editMinute = cal.get(java.util.Calendar.MINUTE).toString().padStart(2, '0')
                             if (symp.type == com.parkinson.app.domain.models.SymptomType.MOOD) editMood = symp.severity
                         }) { Text("Editar") }
-                        TextButton(onClick = {
-                            scope.launch {
-                                app.healthConnect.deleteSymptom(symp)
-                                val end = java.time.Instant.now()
-                                val start = end.minusSeconds(365L*24*3600)
-                                symptomEvents = app.healthConnect.readSymptoms(start, end)
-                                exerciseEvents = app.healthConnect.readExerciseSessions(start, end)
-                            }
-                        }) { Text(stringResource(R.string.anular)) }
+                        TextButton(onClick = { pendingSymptom = symp }) { Text(stringResource(R.string.anular)) }
                         }
                     }
                 }
@@ -399,6 +393,42 @@ fun CaregiverScreen() {
             })
         }
         status?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+    }
+
+    pendingIntake?.let { intake ->
+        AlertDialog(
+            onDismissRequest = { pendingIntake = null },
+            title = { Text("Anular toma") },
+            text = { Text("¿Estás seguro de anular esta toma?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.deleteIntake(intake)
+                    pendingIntake = null
+                }) { Text("Sí") }
+            },
+            dismissButton = { TextButton(onClick = { pendingIntake = null }) { Text("No") } }
+        )
+    }
+
+    pendingSymptom?.let { symp ->
+        AlertDialog(
+            onDismissRequest = { pendingSymptom = null },
+            title = { Text("Anular evento") },
+            text = { Text("¿Estás seguro de anular este evento?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    scope.launch {
+                        app.healthConnect.deleteSymptom(symp)
+                        val end = java.time.Instant.now()
+                        val start = end.minusSeconds(365L*24*3600)
+                        symptomEvents = app.healthConnect.readSymptoms(start, end)
+                        exerciseEvents = app.healthConnect.readExerciseSessions(start, end)
+                        pendingSymptom = null
+                    }
+                }) { Text("Sí") }
+            },
+            dismissButton = { TextButton(onClick = { pendingSymptom = null }) { Text("No") } }
+        )
     }
 }
 
