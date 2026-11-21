@@ -52,7 +52,7 @@ fun ReportScreen() {
                 generatedFile = null
                 scope.launch {
                     try {
-                        val f = PdfReportGenerator(app).generate(app.healthConnect, app.medicationRepository, selectedDays)
+                        val f = PdfReportGenerator(app).generate(app.healthConnect, app.medicationRepository, app.tremorDao, selectedDays)
                         generatedFile = f
                         status = "PDF guardado en: ${f.absolutePath}"
                     } catch (e: Exception) {

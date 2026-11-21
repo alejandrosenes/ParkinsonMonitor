@@ -166,7 +166,7 @@ fun SettingsScreen() {
                 reportGenerating = true
                 scope.launch {
                     try {
-                        val f = PdfReportGenerator(app).generate(app.healthConnect, app.medicationRepository, 30)
+                        val f = PdfReportGenerator(app).generate(app.healthConnect, app.medicationRepository, app.tremorDao, 30)
                         generatedReportFile = f
                         Toast.makeText(context, "PDF guardado en: ${f.absolutePath}", Toast.LENGTH_SHORT).show()
                     } catch (e: Exception) {
@@ -239,8 +239,16 @@ fun SettingsScreen() {
                             val app = context.applicationContext as ParkinsonApp
                             try {
                                 app.medicationRepository.clearAll()
+                                app.tremorDao.clearAll()
                                 CustomMedStore.clearAll(context)
                                 FavoriteMedStore.clearAll(context)
+                                // Delete ON/OFF symptom episodes from Health Connect
+                                scope.launch {
+                                    val end = java.time.Instant.now()
+                                    val start = end.minusSeconds(3650L*24*3600)
+                                    val symptoms = app.healthConnect.readSymptoms(start, end)
+                                    symptoms.forEach { app.healthConnect.deleteSymptom(it) }
+                                }
                                 MedicationAlarmScheduler.scheduleAll(context, emptyList())
                                 AppSettings.applyPalette(context, "blue")
                                 AppSettings.applyTextScale(context, 1f)

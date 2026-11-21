@@ -264,7 +264,7 @@ fun MedicationScreen() {
                 color = Color(0xCC1B5E20)
             ) {}
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("✓", style = MaterialTheme.typography.displayLarge, color = Color.White, fontWeight = FontWeight.Bold)
+                Text("\u2713", style = MaterialTheme.typography.displayLarge, color = Color.White, fontWeight = FontWeight.Bold)
                 Text("Medicacion tomada", style = MaterialTheme.typography.headlineMedium, color = Color.White, fontWeight = FontWeight.Bold)
                 Text(takenMedName, style = MaterialTheme.typography.titleLarge, color = Color.White)
             }

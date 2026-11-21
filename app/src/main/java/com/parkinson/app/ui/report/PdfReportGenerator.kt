@@ -12,6 +12,8 @@ import com.itextpdf.layout.properties.TextAlignment
 import com.itextpdf.kernel.colors.DeviceRgb
 import com.itextpdf.layout.properties.UnitValue
 import com.parkinson.app.data.health.HealthConnectManager
+import com.parkinson.app.data.local.database.dao.TremorDao
+import com.parkinson.app.data.local.database.entities.TremorResultEntity
 import com.parkinson.app.data.local.repository.MedicationRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -26,6 +28,7 @@ class PdfReportGenerator(private val context: Context) {
     suspend fun generate(
         health: HealthConnectManager,
         repo: MedicationRepository,
+        tremorDao: TremorDao,
         days: Int
     ): File = withContext(Dispatchers.IO) {
         val end = Instant.now()
@@ -37,6 +40,8 @@ class PdfReportGenerator(private val context: Context) {
             Log.w("PdfReport", "observeIntakes failed", e); emptyList()
         }
         val filteredIntakes = intakes.filter { it.intakeTimeMillis in start.toEpochMilli()..end.toEpochMilli() }
+        val tremorResults = try { tremorDao.observeAll().first() } catch (e: Exception) { emptyList() }
+        val filteredTremor = tremorResults.filter { it.timestamp in start.toEpochMilli()..end.toEpochMilli() }
 
         val steps = try { health.readSteps(start, end) } catch (e: Exception) { emptyList() }
         val hr = try { health.readHeartRate(start, end) } catch (e: Exception) { emptyList() }
@@ -101,7 +106,7 @@ class PdfReportGenerator(private val context: Context) {
             table.addCell("Actividades deportivas (eventos)")
             table.addCell(sports.size.toString())
             sportMinutesByType.forEach { (type, mins) ->
-                val typeName = androidx.health.connect.client.records.ExerciseSessionRecord.EXERCISE_TYPE_INT_TO_STRING_MAP[type] ?: "Tipo $type"
+                val typeName = "Tipo $type"
                 table.addCell("  - $typeName")
                 table.addCell("${mins / 60}h ${mins % 60}m")
             }
@@ -272,6 +277,33 @@ class PdfReportGenerator(private val context: Context) {
             }
 
             doc.add(Paragraph(" "))
+            doc.add(Paragraph("Pruebas de temblor (historico):").setBold())
+            if (filteredTremor.isEmpty()) {
+                doc.add(Paragraph("Sin pruebas de temblor en el periodo."))
+            } else {
+                val tt = Table(UnitValue.createPercentArray(floatArrayOf(30f, 20f, 20f, 30f))).useAllAvailableWidth()
+                tt.addCell("Fecha/Hora")
+                tt.addCell("Modo")
+                tt.addCell("Puntuacion")
+                tt.addCell("Freq. pico (Hz)")
+                filteredTremor.sortedBy { it.timestamp }.forEach { t ->
+                    tt.addCell(sdf.format(Date(t.timestamp)))
+                    tt.addCell(t.mode)
+                    tt.addCell(String.format(Locale.getDefault(), "%.0f", t.score))
+                    tt.addCell(String.format(Locale.getDefault(), "%.2f", t.peakFreqHz))
+                }
+                doc.add(tt)
+
+                // Simple line chart of scores over time
+                doc.add(Paragraph(" "))
+                doc.add(Paragraph("Grafica historica de puntuaciones de temblor:").setBold())
+                val chartBytes = createTremorChart(filteredTremor)
+                val imageData = com.itextpdf.io.image.ImageDataFactory.create(chartBytes)
+                val image = com.itextpdf.layout.element.Image(imageData)
+                image.setWidth(com.itextpdf.layout.properties.UnitValue.createPointValue(400f))
+                doc.add(image)
+            }
+            doc.add(Paragraph(" "))
             doc.add(Paragraph("Entregar al neurologo para revision del tratamiento.").setItalic().setFontSize(10f))
             doc.close()
             Log.i("PdfReport", "PDF creado: ${file.absolutePath}")
@@ -282,5 +314,56 @@ class PdfReportGenerator(private val context: Context) {
             if (file.exists()) file.delete()
             throw e
         }
+    }
+
+    private fun createTremorChart(results: List<TremorResultEntity>): ByteArray {
+        val width = 800
+        val height = 300
+        val bitmap = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(bitmap)
+        canvas.drawColor(android.graphics.Color.WHITE)
+        val axisPaint = android.graphics.Paint().apply {
+            color = android.graphics.Color.BLACK
+            strokeWidth = 2f
+            isAntiAlias = true
+        }
+        val pointPaint = android.graphics.Paint().apply {
+            color = android.graphics.Color.parseColor("#1565C0")
+            style = android.graphics.Paint.Style.FILL
+            isAntiAlias = true
+        }
+        val linePaint = android.graphics.Paint().apply {
+            color = android.graphics.Color.parseColor("#1565C0")
+            strokeWidth = 3f
+            isAntiAlias = true
+        }
+        val margin = 40f
+        val chartLeft = margin
+        val chartBottom = height - margin
+        val chartWidth = width - 2 * margin
+        val chartHeight = height - 2 * margin
+        canvas.drawLine(chartLeft, chartBottom, chartLeft + chartWidth, chartBottom, axisPaint)
+        canvas.drawLine(chartLeft, chartBottom, chartLeft, chartBottom - chartHeight, axisPaint)
+        val sorted = results.sortedBy { it.timestamp }
+        if (sorted.size >= 2) {
+            val minTime = sorted.first().timestamp
+            val maxTime = sorted.last().timestamp
+            val timeRange = (maxTime - minTime).coerceAtLeast(1L).toDouble()
+            var prevX = 0f
+            var prevY = 0f
+            sorted.forEachIndexed { idx, t ->
+                val x = chartLeft + (((t.timestamp - minTime).toDouble() / timeRange) * chartWidth).toFloat()
+                val y = chartBottom - ((t.score / 100.0) * chartHeight).toFloat()
+                if (idx > 0) {
+                    canvas.drawLine(prevX, prevY, x, y, linePaint)
+                }
+                canvas.drawCircle(x, y, 5f, pointPaint)
+                prevX = x
+                prevY = y
+            }
+        }
+        val out = java.io.ByteArrayOutputStream()
+        bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
+        return out.toByteArray()
     }
 }

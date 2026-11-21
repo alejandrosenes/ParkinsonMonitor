@@ -34,6 +34,7 @@ object BackupManager {
             val sArr = JSONArray()
             schedules.forEach { s ->
                 val o = JSONObject()
+                o.put("id", s.id)
                 o.put("name", s.name)
                 o.put("doseMg", s.doseMg.toDouble())
                 o.put("hour", s.hour)
@@ -119,10 +120,12 @@ object BackupManager {
             FavoriteMedStore.clearAll(context)
 
             // schedules
+            val scheduleIdMap = linkedMapOf<Long, Long>()
             val sArr = json.optJSONArray("schedules") ?: JSONArray()
             for (i in 0 until sArr.length()) {
                 val o = sArr.getJSONObject(i)
-                repo(context).addSchedule(
+                val oldId = if (o.has("id") && !o.isNull("id")) o.optLong("id") else null
+                val newId = repo(context).addSchedule(
                     MedicationSchedule(
                         name = o.optString("name", "Levodopa"),
                         doseMg = o.optDouble("doseMg", 100.0).toFloat(),
@@ -131,13 +134,15 @@ object BackupManager {
                         enabled = o.optBoolean("enabled", true)
                     )
                 )
+                if (oldId != null) scheduleIdMap[oldId] = newId
             }
 
             // intakes
             val iArr = json.optJSONArray("intakes") ?: JSONArray()
             for (i in 0 until iArr.length()) {
                 val o = iArr.getJSONObject(i)
-                val sid = if (o.isNull("scheduleId")) null else o.optLong("scheduleId")
+                val rawSid = if (o.isNull("scheduleId")) null else o.optLong("scheduleId")
+                val sid = rawSid?.let { scheduleIdMap[it] }
                 repo(context).addIntake(
                     MedicationIntake(
                         scheduleId = sid,

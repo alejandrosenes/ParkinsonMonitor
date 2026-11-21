@@ -351,10 +351,11 @@ fun TremorScreen() {
         item.samplesCsv?.let { csv ->
             val values = csv.split(",").mapNotNull { it.trim().toFloatOrNull() }
             if (values.isNotEmpty()) {
-                Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp)) {
-                        Text("Grafica: ${item.mode} ${"%.0f".format(item.score)}", fontWeight = FontWeight.Bold)
-                        Canvas(Modifier.fillMaxWidth().height(120.dp)) {
+                AlertDialog(
+                    onDismissRequest = { selectedHistory = null },
+                    title = { Text("Grafica: ${item.mode} ${"%.0f".format(item.score)}", fontWeight = FontWeight.Bold) },
+                    text = {
+                        Canvas(Modifier.fillMaxWidth().height(200.dp)) {
                             val maxA = values.maxOrNull() ?: 1f
                             val minA = values.minOrNull() ?: 0f
                             val range = (maxA - minA).coerceAtLeast(0.1f)
@@ -367,9 +368,11 @@ fun TremorScreen() {
                             }
                             drawPath(path, color = Color.Blue, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3f))
                         }
-                        Button(onClick = { selectedHistory = null }) { Text("Cerrar") }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { selectedHistory = null }) { Text("Cerrar") }
                     }
-                }
+                )
             }
         }
     }
