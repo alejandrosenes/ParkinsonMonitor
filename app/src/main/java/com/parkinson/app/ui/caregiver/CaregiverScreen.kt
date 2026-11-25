@@ -20,6 +20,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.parkinson.app.ParkinsonApp
 import com.parkinson.app.R
 import com.parkinson.app.ui.components.LargeButton
+import com.parkinson.app.util.AppSettings
 import com.parkinson.app.ui.medication.MedicationViewModel
 import com.parkinson.app.ui.report.PdfReportGenerator
 import com.parkinson.app.ui.theme.ParkinsonBlue
@@ -404,7 +405,7 @@ fun CaregiverScreen() {
                 generatedFile = null
                 scope.launch {
                     try {
-                        val f = PdfReportGenerator(app).generate(app.healthConnect, app.medicationRepository, app.tremorDao, selectedDays, null, null, includeMetrics, includeDaily, includeIntakes, includeEvents, includeSports, includeMixed)
+                        val f = PdfReportGenerator(app).generate(app.healthConnect, app.medicationRepository, app.tremorDao, selectedDays, null, null, includeMetrics, includeDaily, includeIntakes, includeEvents, includeSports, includeMixed, AppSettings.patientName.value)
                         generatedFile = f
                         status = "PDF guardado en: ${f.absolutePath}"
                     } catch (e: Exception) {

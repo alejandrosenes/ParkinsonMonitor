@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.parkinson.app.ParkinsonApp
+import com.parkinson.app.util.AppSettings
 import com.parkinson.app.R
 import com.parkinson.app.ui.components.LargeButton
 import androidx.compose.ui.res.stringResource
@@ -116,7 +117,7 @@ fun ReportScreen() {
                             cal.set(java.util.Calendar.HOUR_OF_DAY, 23); cal.set(java.util.Calendar.MINUTE, 59); cal.set(java.util.Calendar.SECOND, 59)
                             cal.timeInMillis
                         } catch (_: Exception) { null } else null
-                        val f = PdfReportGenerator(app).generate(app.healthConnect, app.medicationRepository, app.tremorDao, selectedDays, startMs, endMs, includeMetrics, includeDaily, includeIntakes, includeEvents, includeSports, includeMixed)
+                        val f = PdfReportGenerator(app).generate(app.healthConnect, app.medicationRepository, app.tremorDao, selectedDays, startMs, endMs, includeMetrics, includeDaily, includeIntakes, includeEvents, includeSports, includeMixed, AppSettings.patientName.value)
                         generatedFile = f
                         status = "PDF guardado en: ${f.absolutePath}"
                     } catch (e: Exception) {
@@ -131,7 +132,7 @@ fun ReportScreen() {
 
         generatedFile?.let { f ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                LargeButton(text = "Ver informe", onClick = {
+                LargeButton(text = "Abrir informe", onClick = {
                     try {
                         val authority = "${app.packageName}.fileprovider"
                         val uri: Uri = FileProvider.getUriForFile(context, authority, f)
@@ -143,16 +144,6 @@ fun ReportScreen() {
                     } catch (e: Exception) {
                         android.widget.Toast.makeText(context, "No se pudo abrir: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
                     }
-                })
-                LargeButton(text = stringResource(R.string.compartir_pdf), onClick = {
-                    val authority = "${app.packageName}.fileprovider"
-                    val uri: Uri = FileProvider.getUriForFile(context, authority, f)
-                    val share = Intent(Intent.ACTION_SEND).apply {
-                        type = "application/pdf"
-                        putExtra(Intent.EXTRA_STREAM, uri)
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }
-                    context.startActivity(Intent.createChooser(share, context.getString(R.string.compartir_informe)))
                 })
             }
             LargeButton(text = "Analizar con IA", onClick = {

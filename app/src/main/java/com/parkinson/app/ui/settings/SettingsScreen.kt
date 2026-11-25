@@ -22,6 +22,8 @@ import androidx.compose.ui.unit.dp
 import com.parkinson.app.R
 import com.parkinson.app.ParkinsonApp
 import com.parkinson.app.ui.components.LargeButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
 import com.parkinson.app.ui.report.PdfReportGenerator
 import com.parkinson.app.util.AppSettings
 import com.parkinson.app.util.BackupManager
@@ -38,6 +40,7 @@ fun SettingsScreen() {
     var selectedPalette by remember { mutableStateOf(AppSettings.colorPalette.value) }
     var selectedScale by remember { mutableStateOf(AppSettings.textScale.value) }
     var aiKey by remember { mutableStateOf(AppSettings.aiApiKey.value) }
+    var patientName by remember { mutableStateOf(AppSettings.patientName.value) }
     val app = context.applicationContext as ParkinsonApp
     val scope = rememberCoroutineScope()
     var healthAvailable by remember { mutableStateOf(false) }
@@ -55,6 +58,8 @@ fun SettingsScreen() {
         }
     }
     var reportGenerating by remember { mutableStateOf(false) }
+    var reportStart by remember { mutableStateOf("") }
+    var reportEnd by remember { mutableStateOf("") }
     var includeMetrics by remember { mutableStateOf(true) }
     var includeDaily by remember { mutableStateOf(true) }
     var includeIntakes by remember { mutableStateOf(true) }
@@ -177,13 +182,56 @@ fun SettingsScreen() {
             Row { Checkbox(checked = includeMixed, onCheckedChange = { includeMixed = it }); Text("Informe mixto") }
         }
 
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+                value = reportStart,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Desde") },
+                trailingIcon = { TextButton(onClick = {
+                    val c = java.util.Calendar.getInstance()
+                    android.app.DatePickerDialog(context, { _, y, m, d -> reportStart = "%02d/%02d/%04d".format(d, m + 1, y) }, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH)).show()
+                }) { Icon(androidx.compose.material.icons.Icons.Filled.DateRange, contentDescription = "Fecha") } },
+                modifier = Modifier.weight(1f)
+            )
+            OutlinedTextField(
+                value = reportEnd,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Hasta") },
+                trailingIcon = { TextButton(onClick = {
+                    val c = java.util.Calendar.getInstance()
+                    android.app.DatePickerDialog(context, { _, y, m, d -> reportEnd = "%02d/%02d/%04d".format(d, m + 1, y) }, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH)).show()
+                }) { Icon(androidx.compose.material.icons.Icons.Filled.DateRange, contentDescription = "Fecha") } },
+                modifier = Modifier.weight(1f)
+            )
+        }
+
         LargeButton(
             text = if (reportGenerating) "Generando..." else "Generar informe PDF",
             onClick = {
                 reportGenerating = true
                 scope.launch {
                     try {
-                        val f = PdfReportGenerator(app).generate(app.healthConnect, app.medicationRepository, app.tremorDao, 30, null, null, includeMetrics, includeDaily, includeIntakes, includeEvents, includeSports, includeMixed)
+                        val startMs = if (reportStart.isNotBlank()) try {
+                            val p = reportStart.split("/")
+                            val cal = java.util.Calendar.getInstance()
+                            cal.set(java.util.Calendar.DAY_OF_MONTH, p[0].toInt())
+                            cal.set(java.util.Calendar.MONTH, p[1].toInt() - 1)
+                            cal.set(java.util.Calendar.YEAR, p[2].toInt())
+                            cal.set(java.util.Calendar.HOUR_OF_DAY, 0); cal.set(java.util.Calendar.MINUTE, 0); cal.set(java.util.Calendar.SECOND, 0)
+                            cal.timeInMillis
+                        } catch (_: Exception) { null } else null
+                        val endMs = if (reportEnd.isNotBlank()) try {
+                            val p = reportEnd.split("/")
+                            val cal = java.util.Calendar.getInstance()
+                            cal.set(java.util.Calendar.DAY_OF_MONTH, p[0].toInt())
+                            cal.set(java.util.Calendar.MONTH, p[1].toInt() - 1)
+                            cal.set(java.util.Calendar.YEAR, p[2].toInt())
+                            cal.set(java.util.Calendar.HOUR_OF_DAY, 23); cal.set(java.util.Calendar.MINUTE, 59); cal.set(java.util.Calendar.SECOND, 59)
+                            cal.timeInMillis
+                        } catch (_: Exception) { null } else null
+                        val f = PdfReportGenerator(app).generate(app.healthConnect, app.medicationRepository, app.tremorDao, 30, startMs, endMs, includeMetrics, includeDaily, includeIntakes, includeEvents, includeSports, includeMixed, AppSettings.patientName.value)
                         generatedReportFile = f
                         Toast.makeText(context, "PDF guardado en: ${f.absolutePath}", Toast.LENGTH_SHORT).show()
                     } catch (e: Exception) {
@@ -226,6 +274,17 @@ fun SettingsScreen() {
         }
 
         Spacer(Modifier.height(8.dp))
+        Text("Datos del paciente", style = MaterialTheme.typography.titleLarge)
+        OutlinedTextField(
+            value = patientName,
+            onValueChange = { patientName = it },
+            label = { Text("Nombre y apellidos") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Button(onClick = { AppSettings.applyPatientName(context, patientName) }) {
+            Text("Guardar nombre")
+        }
+
         Text("Analisis con IA (OpenAI)", style = MaterialTheme.typography.titleLarge)
         OutlinedTextField(
             value = aiKey,

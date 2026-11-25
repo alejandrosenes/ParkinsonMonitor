@@ -56,6 +56,7 @@ fun DashboardScreen(
     val scope = rememberCoroutineScope()
     var doseStruck by remember { mutableStateOf(false) }
     var showMoodEffect by remember { mutableStateOf(false) }
+    var effectText by remember { mutableStateOf("") }
     var obsText by remember { mutableStateOf("") }
     var obsDate by remember { mutableStateOf("") }
     var struckDoseText by remember { mutableStateOf<String?>(null) }
@@ -169,6 +170,7 @@ fun DashboardScreen(
                 }
                 Button(onClick = {
                     vm.recordMood(selectedMood)
+                    effectText = "Estado de animo registrado"
                     showMoodEffect = true
                     scope.launch {
                         kotlinx.coroutines.delay(2200)
@@ -220,6 +222,7 @@ fun DashboardScreen(
                                 notes = obsText
                             )
                         )
+                        effectText = "Observacion Registrada"
                         showMoodEffect = true
                         kotlinx.coroutines.delay(2200)
                         showMoodEffect = false
@@ -244,7 +247,7 @@ fun DashboardScreen(
             Surface(Modifier.fillMaxSize(), color = Color(0xCC1B5E20)) {}
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("\u2713", style = MaterialTheme.typography.displayLarge, color = Color.White, fontWeight = FontWeight.Bold)
-                Text("Estado de animo registrado", style = MaterialTheme.typography.headlineMedium, color = Color.White, fontWeight = FontWeight.Bold)
+                Text(effectText, style = MaterialTheme.typography.headlineMedium, color = Color.White, fontWeight = FontWeight.Bold)
             }
         }
     }

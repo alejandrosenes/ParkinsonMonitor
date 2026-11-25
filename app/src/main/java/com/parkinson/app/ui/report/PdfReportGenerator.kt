@@ -37,7 +37,8 @@ class PdfReportGenerator(private val context: Context) {
         includeIntakes: Boolean = true,
         includeEvents: Boolean = true,
         includeSports: Boolean = true,
-        includeMixed: Boolean = true
+        includeMixed: Boolean = true,
+        patientName: String = ""
     ): File = withContext(Dispatchers.IO) {
         val end = if (endMillis != null) Instant.ofEpochMilli(endMillis) else Instant.now()
         val start = if (startMillis != null) Instant.ofEpochMilli(startMillis) else end.minusSeconds(days.toLong() * 24 * 3600)
@@ -325,6 +326,36 @@ class PdfReportGenerator(private val context: Context) {
             }
             doc.add(Paragraph(" "))
             doc.add(Paragraph("Entregar al neurologo para revision del tratamiento.").setItalic().setFontSize(10f))
+
+            // Header / footer on every page
+            val logoBytes = try {
+                val bmp = android.graphics.BitmapFactory.decodeResource(context.resources, com.parkinson.app.R.mipmap.ic_launcher)
+                val out = java.io.ByteArrayOutputStream()
+                bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
+                out.toByteArray()
+            } catch (e: Exception) { null }
+            val font = com.itextpdf.kernel.font.PdfFontFactory.createFont(com.itextpdf.io.font.constants.StandardFonts.HELVETICA)
+            val total = pdf.numberOfPages
+            for (i in 1..total) {
+                val page = pdf.getPage(i)
+                val canvas = com.itextpdf.kernel.pdf.canvas.PdfCanvas(page)
+                val pageSize = page.pageSize
+                if (logoBytes != null) {
+                    val imgData = com.itextpdf.io.image.ImageDataFactory.create(logoBytes)
+                    canvas.addImageAt(imgData, 40f, pageSize.top - 45f, true)
+                }
+                canvas.beginText()
+                canvas.setFontAndSize(font, 10f)
+                canvas.moveText(80.0, pageSize.top.toDouble() - 30.0)
+                canvas.showText("Parkinson Monitor - $patientName")
+                canvas.endText()
+                canvas.beginText()
+                canvas.setFontAndSize(font, 10f)
+                canvas.moveText(pageSize.width.toDouble() / 2 - 20.0, 30.0)
+                canvas.showText("$i / $total")
+                canvas.endText()
+            }
+
             doc.close()
             Log.i("PdfReport", "PDF creado: ${file.absolutePath}")
             file
