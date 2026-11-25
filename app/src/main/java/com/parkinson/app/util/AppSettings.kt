@@ -8,12 +8,10 @@ object AppSettings {
     private const val PREFS = "parkinson_app_settings"
     private const val KEY_PALETTE = "palette"
     private const val KEY_TEXT_SCALE = "text_scale"
-    private const val KEY_AI_API_KEY = "ai_api_key"
     private const val KEY_PATIENT_NAME = "patient_name"
 
     val colorPalette = mutableStateOf("blue")
     val textScale = mutableStateOf(1f)
-    val aiApiKey = mutableStateOf("")
     val patientName = mutableStateOf("")
 
     val paletteOptions = listOf(
@@ -34,13 +32,7 @@ object AppSettings {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         colorPalette.value = prefs.getString(KEY_PALETTE, "blue") ?: "blue"
         textScale.value = prefs.getFloat(KEY_TEXT_SCALE, 1f)
-        aiApiKey.value = prefs.getString(KEY_AI_API_KEY, "") ?: ""
         patientName.value = prefs.getString(KEY_PATIENT_NAME, "") ?: ""
-    }
-
-    fun applyApiKey(context: Context, key: String) {
-        aiApiKey.value = key
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_AI_API_KEY, key).apply()
     }
 
     fun applyPatientName(context: Context, name: String) {

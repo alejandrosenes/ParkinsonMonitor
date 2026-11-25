@@ -146,49 +146,7 @@ fun ReportScreen() {
                     }
                 })
             }
-            LargeButton(text = "Analizar con IA", onClick = {
-                val key = com.parkinson.app.util.AppSettings.aiApiKey.value
-                if (key.isBlank()) {
-                    android.widget.Toast.makeText(context, "Configura tu clave API de IA en Ajustes", android.widget.Toast.LENGTH_LONG).show()
-                } else {
-                    scope.launch {
-                        try {
-                            val tremor = app.tremorDao.observeAll().first()
-                            val intakes = app.medicationRepository.getAllIntakes()
-                            val sb = StringBuilder()
-                            sb.append("Informe Parkinson Monitor (${selectedDays} dias)\n")
-                            sb.append("Tomas de medicacion: ${intakes.size}\n")
-                            tremor.take(20).forEach { t ->
-                                sb.append("Temblor ${t.mode}: score=${"%.0f".format(t.score)}, freq=${"%.2f".format(t.peakFreqHz)} Hz, fecha=${java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault()).format(java.util.Date(t.timestamp))}\n")
-                            }
-                            sb.append("\nAnaliza este informe para optimizar la toma de medicamentos y horarios, cruzando datos de sueno y ejercicio y buscando correspondencias con las tomas de medicamentos.")
 
-                            val url = java.net.URL("https://api.openai.com/v1/chat/completions")
-                            val conn = url.openConnection() as java.net.HttpURLConnection
-                            conn.requestMethod = "POST"
-                            conn.setRequestProperty("Content-Type", "application/json")
-                            conn.setRequestProperty("Authorization", "Bearer $key")
-                            conn.doOutput = true
-                            val body = org.json.JSONObject()
-                            body.put("model", "gpt-4o-mini")
-                            val msgs = org.json.JSONArray()
-                            val msg = org.json.JSONObject()
-                            msg.put("role", "user")
-                            msg.put("content", sb.toString())
-                            msgs.put(msg)
-                            body.put("messages", msgs)
-                            conn.outputStream.use { it.write(body.toString().toByteArray()) }
-                            val respText = conn.inputStream.bufferedReader().readText()
-                            val json = org.json.JSONObject(respText)
-                            val analysis = json.getJSONArray("choices").getJSONObject(0).getJSONObject("message").getString("content")
-                            generatedFile = generatedFile // keep
-                            status = "Analisis IA:\n$analysis"
-                        } catch (e: Exception) {
-                            status = "Error IA: ${e.message}"
-                        }
-                    }
-                }
-            })
         }
 
         status?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }

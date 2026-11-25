@@ -190,7 +190,11 @@ fun SplashScreen(onFinished: (Boolean, String?) -> Unit) {
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "Programada por Alejandro Senés 2026",
+                text = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault()).format(java.util.Date()),
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                text = "v${com.parkinson.app.BuildConfig.VERSION_NAME}",
                 style = MaterialTheme.typography.bodyMedium
             )
         }

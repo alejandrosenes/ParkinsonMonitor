@@ -24,6 +24,9 @@ import com.parkinson.app.ParkinsonApp
 import com.parkinson.app.ui.components.LargeButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Public
 import com.parkinson.app.ui.report.PdfReportGenerator
 import com.parkinson.app.util.AppSettings
 import com.parkinson.app.util.BackupManager
@@ -39,7 +42,6 @@ fun SettingsScreen() {
     var selectedLang by remember { mutableStateOf(LanguageManager.get(context)) }
     var selectedPalette by remember { mutableStateOf(AppSettings.colorPalette.value) }
     var selectedScale by remember { mutableStateOf(AppSettings.textScale.value) }
-    var aiKey by remember { mutableStateOf(AppSettings.aiApiKey.value) }
     var patientName by remember { mutableStateOf(AppSettings.patientName.value) }
     val app = context.applicationContext as ParkinsonApp
     val scope = rememberCoroutineScope()
@@ -285,17 +287,6 @@ fun SettingsScreen() {
             Text("Guardar nombre")
         }
 
-        Text("Analisis con IA (OpenAI)", style = MaterialTheme.typography.titleLarge)
-        OutlinedTextField(
-            value = aiKey,
-            onValueChange = { aiKey = it },
-            label = { Text("Clave API de OpenAI") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        Button(onClick = { AppSettings.applyApiKey(context, aiKey) }) {
-            Text("Guardar clave")
-        }
-        Text("La clave se guarda localmente. Necesaria para 'Analizar con IA'.", style = MaterialTheme.typography.bodySmall)
 
         Text(stringResource(R.string.backup_title), style = MaterialTheme.typography.titleLarge)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -361,6 +352,20 @@ fun SettingsScreen() {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/+UiP8FW022MQxNmJk"))
             context.startActivity(intent)
         }) { Text(stringResource(R.string.abrir_grupo_telegram)) }
+
+        Spacer(Modifier.height(8.dp))
+        Text("Contacto", style = MaterialTheme.typography.titleMedium)
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            IconButton(onClick = {
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.instagram.com/alejandrosenes/")))
+            }) { Icon(Icons.Filled.CameraAlt, contentDescription = "Instagram") }
+            IconButton(onClick = {
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://telegram.me/alejandrosenes")))
+            }) { Icon(Icons.Filled.Send, contentDescription = "Telegram") }
+            IconButton(onClick = {
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.alejandrosenes.com/")))
+            }) { Icon(Icons.Filled.Public, contentDescription = "Web") }
+        }
 
     }
 }
