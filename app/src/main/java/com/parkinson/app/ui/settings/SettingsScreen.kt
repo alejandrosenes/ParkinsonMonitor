@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.Email
 import com.parkinson.app.ui.report.PdfReportGenerator
 import com.parkinson.app.util.AppSettings
 import com.parkinson.app.util.BackupManager
@@ -354,17 +355,33 @@ fun SettingsScreen() {
         }) { Text(stringResource(R.string.abrir_grupo_telegram)) }
 
         Spacer(Modifier.height(8.dp))
-        Text("Contacto", style = MaterialTheme.typography.titleMedium)
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            IconButton(onClick = {
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.instagram.com/alejandrosenes/")))
-            }) { Icon(Icons.Filled.CameraAlt, contentDescription = "Instagram") }
-            IconButton(onClick = {
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://telegram.me/alejandrosenes")))
-            }) { Icon(Icons.Filled.Send, contentDescription = "Telegram") }
-            IconButton(onClick = {
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.alejandrosenes.com/")))
-            }) { Icon(Icons.Filled.Public, contentDescription = "Web") }
+        Text("Contactar con el creador: Alejandro Senés Torres", style = MaterialTheme.typography.titleMedium)
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.CameraAlt, contentDescription = "Instagram")
+                TextButton(onClick = {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.instagram.com/alejandrosenes/")))
+                }) { Text("Instagram") }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.Send, contentDescription = "Telegram")
+                TextButton(onClick = {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://telegram.me/alejandrosenes")))
+                }) { Text("Telegram") }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.Public, contentDescription = "Web")
+                TextButton(onClick = {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.alejandrosenes.com/")))
+                }) { Text("Web") }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.Email, contentDescription = "Email")
+                TextButton(onClick = {
+                    val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:alejandrosenes@gmail.com"))
+                    context.startActivity(intent)
+                }) { Text("Email: alejandrosenes@gmail.com") }
+            }
         }
 
     }

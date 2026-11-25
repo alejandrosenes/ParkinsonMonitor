@@ -361,9 +361,12 @@ class PdfReportGenerator(private val context: Context) {
             file
         } catch (e: Exception) {
             Log.e("PdfReport", "Error generando PDF", e)
+            val sw = java.io.StringWriter()
+            e.printStackTrace(java.io.PrintWriter(sw))
+            val stack = sw.toString()
             // Cleanup parcial
             if (file.exists()) file.delete()
-            throw e
+            throw RuntimeException(stack, e)
         }
     }
 
