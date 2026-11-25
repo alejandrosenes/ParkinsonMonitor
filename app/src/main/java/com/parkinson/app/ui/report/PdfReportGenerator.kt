@@ -337,23 +337,29 @@ class PdfReportGenerator(private val context: Context) {
             val font = com.itextpdf.kernel.font.PdfFontFactory.createFont(com.itextpdf.io.font.constants.StandardFonts.HELVETICA)
             val total = pdf.numberOfPages
             for (i in 1..total) {
-                val page = pdf.getPage(i)
-                val canvas = com.itextpdf.kernel.pdf.canvas.PdfCanvas(page)
-                val pageSize = page.pageSize
+                val page = pdf.getPage(i) ?: continue
+                val pageObj = page.pdfObject
+                if (pageObj == null) continue
+                val canvas = try { com.itextpdf.kernel.pdf.canvas.PdfCanvas(page) } catch (e: Exception) { continue }
+                val pageSize = page.pageSize ?: continue
                 if (logoBytes != null) {
-                    val imgData = com.itextpdf.io.image.ImageDataFactory.create(logoBytes)
-                    canvas.addImageAt(imgData, 40f, pageSize.top - 45f, true)
+                    try {
+                        val imgData = com.itextpdf.io.image.ImageDataFactory.create(logoBytes)
+                        canvas.addImageAt(imgData, 40f, pageSize.top - 45f, true)
+                    } catch (e: Exception) { }
                 }
-                canvas.beginText()
-                canvas.setFontAndSize(font, 10f)
-                canvas.moveText(80.0, pageSize.top.toDouble() - 30.0)
-                canvas.showText("Parkinson Monitor - $patientName")
-                canvas.endText()
-                canvas.beginText()
-                canvas.setFontAndSize(font, 10f)
-                canvas.moveText(pageSize.width.toDouble() / 2 - 20.0, 30.0)
-                canvas.showText("$i / $total")
-                canvas.endText()
+                try {
+                    canvas.beginText()
+                    canvas.setFontAndSize(font, 10f)
+                    canvas.moveText(80.0, pageSize.top.toDouble() - 30.0)
+                    canvas.showText("Parkinson Monitor - $patientName")
+                    canvas.endText()
+                    canvas.beginText()
+                    canvas.setFontAndSize(font, 10f)
+                    canvas.moveText(pageSize.width.toDouble() / 2 - 20.0, 30.0)
+                    canvas.showText("$i / $total")
+                    canvas.endText()
+                } catch (e: Exception) { }
             }
 
             doc.close()
@@ -361,12 +367,9 @@ class PdfReportGenerator(private val context: Context) {
             file
         } catch (e: Exception) {
             Log.e("PdfReport", "Error generando PDF", e)
-            val sw = java.io.StringWriter()
-            e.printStackTrace(java.io.PrintWriter(sw))
-            val stack = sw.toString()
             // Cleanup parcial
             if (file.exists()) file.delete()
-            throw RuntimeException(stack, e)
+            throw e
         }
     }
 
