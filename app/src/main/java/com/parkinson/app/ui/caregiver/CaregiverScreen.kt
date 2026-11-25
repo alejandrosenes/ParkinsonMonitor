@@ -113,6 +113,12 @@ fun CaregiverScreen() {
 
     val periods = listOf(7, 30, 90)
     var selectedDays by remember { mutableStateOf(30) }
+    var includeMetrics by remember { mutableStateOf(true) }
+    var includeDaily by remember { mutableStateOf(true) }
+    var includeIntakes by remember { mutableStateOf(true) }
+    var includeEvents by remember { mutableStateOf(true) }
+    var includeSports by remember { mutableStateOf(true) }
+    var includeMixed by remember { mutableStateOf(true) }
     var generating by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
     var generatedFile by remember { mutableStateOf<File?>(null) }
@@ -380,6 +386,16 @@ fun CaregiverScreen() {
                 )
             }
         }
+        Text("Secciones del informe", style = MaterialTheme.typography.titleMedium)
+        Column {
+            Row { Checkbox(checked = includeMetrics, onCheckedChange = { includeMetrics = it }); Text("Metrica") }
+            Row { Checkbox(checked = includeDaily, onCheckedChange = { includeDaily = it }); Text("Metricas diarias de Health Connect") }
+            Row { Checkbox(checked = includeIntakes, onCheckedChange = { includeIntakes = it }); Text("Detalle de tomas") }
+            Row { Checkbox(checked = includeEvents, onCheckedChange = { includeEvents = it }); Text("Eventos ON/OFF y estado de animo") }
+            Row { Checkbox(checked = includeSports, onCheckedChange = { includeSports = it }); Text("Actividades deportivas") }
+            Row { Checkbox(checked = includeMixed, onCheckedChange = { includeMixed = it }); Text("Informe mixto") }
+        }
+
         LargeButton(
             text = if (generating) stringResource(R.string.generando) else "${stringResource(R.string.generar_informe_pdf)} (${selectedDays} ${stringResource(R.string.dias)})",
             onClick = {
@@ -388,7 +404,7 @@ fun CaregiverScreen() {
                 generatedFile = null
                 scope.launch {
                     try {
-                        val f = PdfReportGenerator(app).generate(app.healthConnect, app.medicationRepository, app.tremorDao, selectedDays)
+                        val f = PdfReportGenerator(app).generate(app.healthConnect, app.medicationRepository, app.tremorDao, selectedDays, null, null, includeMetrics, includeDaily, includeIntakes, includeEvents, includeSports, includeMixed)
                         generatedFile = f
                         status = "PDF guardado en: ${f.absolutePath}"
                     } catch (e: Exception) {
