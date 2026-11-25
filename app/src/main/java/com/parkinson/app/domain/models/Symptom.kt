@@ -1,6 +1,6 @@
 package com.parkinson.app.domain.models
 
-enum class SymptomType { TREMOR, DYSKINESIA, ON, OFF, MOOD }
+enum class SymptomType { TREMOR, DYSKINESIA, ON, OFF, MOOD, OBSERVATION }
 
 data class SymptomEpisode(
     val id: String = java.util.UUID.randomUUID().toString(),

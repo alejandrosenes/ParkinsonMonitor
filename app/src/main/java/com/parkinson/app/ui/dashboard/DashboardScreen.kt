@@ -56,8 +56,8 @@ fun DashboardScreen(
     val scope = rememberCoroutineScope()
     var doseStruck by remember { mutableStateOf(false) }
     var showMoodEffect by remember { mutableStateOf(false) }
-    var moodObs by remember { mutableStateOf("") }
-    var moodDate by remember { mutableStateOf("") }
+    var obsText by remember { mutableStateOf("") }
+    var obsDate by remember { mutableStateOf("") }
     var struckDoseText by remember { mutableStateOf<String?>(null) }
 
     Box(Modifier.fillMaxSize()) {
@@ -167,19 +167,36 @@ fun DashboardScreen(
                     Text("4 \uD83D\uDE42")
                     Text("5 \uD83D\uDE04")
                 }
+                Button(onClick = {
+                    vm.recordMood(selectedMood)
+                    showMoodEffect = true
+                    scope.launch {
+                        kotlinx.coroutines.delay(2200)
+                        showMoodEffect = false
+                    }
+                }, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.registrar_estado_animo) + " ($selectedMood)")
+                }
+            }
+        }
+
+
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Observaciones", style = MaterialTheme.typography.titleLarge)
                 OutlinedTextField(
-                    value = moodObs,
-                    onValueChange = { moodObs = it },
-                    label = { Text("Observaciones") },
+                    value = obsText,
+                    onValueChange = { obsText = it },
+                    label = { Text("Observacion") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Button(onClick = {
                     val c = java.util.Calendar.getInstance()
-                    android.app.DatePickerDialog(ctx, { _, y, m, d -> moodDate = "%02d/%02d/%04d".format(d, m + 1, y) }, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH)).show()
-                }) { Text(if (moodDate.isBlank()) "Fecha" else moodDate) }
+                    android.app.DatePickerDialog(ctx, { _, y, m, d -> obsDate = "%02d/%02d/%04d".format(d, m + 1, y) }, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH)).show()
+                }) { Text(if (obsDate.isBlank()) "Fecha" else obsDate) }
                 Button(onClick = {
                     val atMillis = try {
-                        val parts = moodDate.split("/")
+                        val parts = obsDate.split("/")
                         val cal = java.util.Calendar.getInstance()
                         if (parts.size == 3) {
                             cal.set(java.util.Calendar.DAY_OF_MONTH, parts[0].toInt())
@@ -191,20 +208,29 @@ fun DashboardScreen(
                         cal.set(java.util.Calendar.SECOND, 0)
                         cal.timeInMillis
                     } catch (_: Exception) { System.currentTimeMillis() }
-                    vm.recordMood(selectedMood, moodObs, atMillis)
-                    showMoodEffect = true
                     scope.launch {
+                        val app = ctx.applicationContext as com.parkinson.app.ParkinsonApp
+                        app.healthConnect.writeSymptom(
+                            com.parkinson.app.domain.models.SymptomEpisode(
+                                type = com.parkinson.app.domain.models.SymptomType.OBSERVATION,
+                                severity = 0f,
+                                startTime = atMillis,
+                                endTime = atMillis + 60 * 1000L,
+                                source = "dashboard_observation",
+                                notes = obsText
+                            )
+                        )
+                        showMoodEffect = true
                         kotlinx.coroutines.delay(2200)
                         showMoodEffect = false
-                        moodObs = ""
-                        moodDate = ""
+                        obsText = ""
+                        obsDate = ""
                     }
                 }, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.registrar_estado_animo) + " ($selectedMood)")
+                    Text("Registrar observacion")
                 }
             }
         }
-
 
         Spacer(Modifier.height(8.dp))
 

@@ -79,7 +79,7 @@ fun CaregiverScreen() {
     val rangeStart = try { java.text.SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).parse(careStart)?.time } catch (_: Exception) { null } ?: Long.MIN_VALUE
     val rangeEnd = try { java.text.SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).parse(careEnd)?.time } catch (_: Exception) { null }?.let { it + 86400000 } ?: Long.MAX_VALUE
     val patientEvents = (intakes.map { PatientEvent(it.intakeTimeMillis, "${it.medicationName} ${it.doseMg.toInt()} mg", it, null) } +
-        symptomEvents.filter { it.type == com.parkinson.app.domain.models.SymptomType.ON || it.type == com.parkinson.app.domain.models.SymptomType.OFF || it.type == com.parkinson.app.domain.models.SymptomType.MOOD }.map { e ->
+        symptomEvents.filter { it.type == com.parkinson.app.domain.models.SymptomType.ON || it.type == com.parkinson.app.domain.models.SymptomType.OFF || it.type == com.parkinson.app.domain.models.SymptomType.MOOD || it.type == com.parkinson.app.domain.models.SymptomType.OBSERVATION }.map { e ->
             PatientEvent(
                 e.startTime,
                 when (e.type) {
@@ -89,6 +89,7 @@ fun CaregiverScreen() {
                         val obs = e.notes?.substringAfter("obs=", "")?.takeIf { it.isNotBlank() }
                         if (obs.isNullOrBlank()) "Estado de animo ${e.severity.toInt()}" else "Estado de animo ${e.severity.toInt()}: $obs"
                     }
+                    com.parkinson.app.domain.models.SymptomType.OBSERVATION -> "Observacion: ${e.notes ?: ""}"
                     else -> e.type.name
                 },
                 null,
@@ -256,8 +257,8 @@ fun CaregiverScreen() {
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            listOf(com.parkinson.app.domain.models.SymptomType.ON, com.parkinson.app.domain.models.SymptomType.OFF, com.parkinson.app.domain.models.SymptomType.MOOD).forEach { t ->
-                                FilterChip(selected = editSymptomType == t, onClick = { editSymptomType = t }, label = { Text(if (t == com.parkinson.app.domain.models.SymptomType.ON) "ON" else if (t == com.parkinson.app.domain.models.SymptomType.OFF) "OFF" else "Animo") })
+                            listOf(com.parkinson.app.domain.models.SymptomType.ON, com.parkinson.app.domain.models.SymptomType.OFF, com.parkinson.app.domain.models.SymptomType.MOOD, com.parkinson.app.domain.models.SymptomType.OBSERVATION).forEach { t ->
+                                FilterChip(selected = editSymptomType == t, onClick = { editSymptomType = t }, label = { Text(if (t == com.parkinson.app.domain.models.SymptomType.ON) "ON" else if (t == com.parkinson.app.domain.models.SymptomType.OFF) "OFF" else if (t == com.parkinson.app.domain.models.SymptomType.MOOD) "Animo" else "Obs") })
                             }
                         }
                         Button(onClick = { showEditDatePicker = true }) { Text(if (editDate.isBlank()) "Fecha" else editDate) }
@@ -269,6 +270,9 @@ fun CaregiverScreen() {
                             Text("Estado de animo: ${editMood.toInt()}")
                             Slider(value = editMood, onValueChange = { editMood = it }, valueRange = 1f..5f, steps = 3)
                             OutlinedTextField(value = editObs, onValueChange = { editObs = it }, label = { Text("Observaciones") })
+                        }
+                        if (editSymptomType == com.parkinson.app.domain.models.SymptomType.OBSERVATION) {
+                            OutlinedTextField(value = editObs, onValueChange = { editObs = it }, label = { Text("Observacion") })
                         }
                     }
                 },
@@ -289,16 +293,18 @@ fun CaregiverScreen() {
                             cal.set(java.util.Calendar.SECOND, 0)
                             cal.timeInMillis
                         } catch (_: Exception) { symp.startTime }
-                        val newSeverity = if (editSymptomType == com.parkinson.app.domain.models.SymptomType.MOOD) editMood else 1f
+                        val newSeverity = if (editSymptomType == com.parkinson.app.domain.models.SymptomType.MOOD) editMood else 0f
                         val newEp = com.parkinson.app.domain.models.SymptomEpisode(
                             id = symp.id,
                             type = editSymptomType,
                             severity = newSeverity,
                             startTime = newStart,
                             endTime = newStart + 60000,
-                            notes = if (editSymptomType == com.parkinson.app.domain.models.SymptomType.MOOD) {
-                                "mood=${editMood.toInt()}" + if (editObs.isNotBlank()) "; obs=$editObs" else ""
-                            } else symp.notes
+                            notes = when (editSymptomType) {
+                                com.parkinson.app.domain.models.SymptomType.MOOD -> "mood=${editMood.toInt()}" + if (editObs.isNotBlank()) "; obs=$editObs" else ""
+                                com.parkinson.app.domain.models.SymptomType.OBSERVATION -> editObs
+                                else -> symp.notes
+                            }
                         )
                         scope.launch {
                             val ok = app.healthConnect.updateSymptom(symp, newEp)

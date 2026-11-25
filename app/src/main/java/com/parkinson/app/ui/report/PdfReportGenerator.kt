@@ -188,7 +188,7 @@ class PdfReportGenerator(private val context: Context) {
             if (includeEvents) {
             doc.add(Paragraph(" "))
             doc.add(Paragraph("Eventos ON/OFF y estado de animo:").setBold())
-            val moodEvents = symptoms.filter { it.type.name == "ON" || it.type.name == "OFF" || it.type.name == "MOOD" }
+            val moodEvents = symptoms.filter { it.type.name == "ON" || it.type.name == "OFF" || it.type.name == "MOOD" || it.type.name == "OBSERVATION" }
             if (moodEvents.isEmpty()) {
                 doc.add(Paragraph("Sin eventos ON/OFF o estado de animo en el periodo."))
             } else {
@@ -200,6 +200,7 @@ class PdfReportGenerator(private val context: Context) {
                         "ON" -> "Entrada en ON"
                         "OFF" -> "Entrada en OFF"
                         "MOOD" -> "Estado de animo ${e.severity.toInt()}"
+                        "OBSERVATION" -> "Observacion: ${e.notes ?: ""}"
                         else -> e.type.name
                     }
                     tEvents.addCell(label)
@@ -239,11 +240,12 @@ class PdfReportGenerator(private val context: Context) {
             filteredIntakes.forEach { i ->
                 mixed.add(MixedEvent(i.intakeTimeMillis, "${i.medicationName} ${i.doseMg.toInt()} mg", "TOMA"))
             }
-            symptoms.filter { it.type.name == "ON" || it.type.name == "OFF" || it.type.name == "MOOD" }.forEach { e ->
+            symptoms.filter { it.type.name == "ON" || it.type.name == "OFF" || it.type.name == "MOOD" || it.type.name == "OBSERVATION" }.forEach { e ->
                 val lbl = when (e.type.name) {
                     "ON" -> "Entrada en ON"
                     "OFF" -> "Entrada en OFF"
                     "MOOD" -> "Estado de animo ${e.severity.toInt()}"
+                    "OBSERVATION" -> "Observacion: ${e.notes ?: ""}"
                     else -> e.type.name
                 }
                 mixed.add(MixedEvent(e.startTime, lbl, e.type.name))
