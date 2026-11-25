@@ -55,6 +55,12 @@ fun SettingsScreen() {
         }
     }
     var reportGenerating by remember { mutableStateOf(false) }
+    var includeMetrics by remember { mutableStateOf(true) }
+    var includeDaily by remember { mutableStateOf(true) }
+    var includeIntakes by remember { mutableStateOf(true) }
+    var includeEvents by remember { mutableStateOf(true) }
+    var includeSports by remember { mutableStateOf(true) }
+    var includeMixed by remember { mutableStateOf(true) }
     var generatedReportFile by remember { mutableStateOf<File?>(null) }
     val reportDownloadLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/pdf")) { uri ->
         if (uri != null && generatedReportFile != null) {
@@ -161,13 +167,23 @@ fun SettingsScreen() {
 
         Spacer(Modifier.height(8.dp))
         Text("Informe medico", style = MaterialTheme.typography.titleLarge)
+        Text("Secciones del informe", style = MaterialTheme.typography.titleMedium)
+        Column {
+            Row { Checkbox(checked = includeMetrics, onCheckedChange = { includeMetrics = it }); Text("Metrica") }
+            Row { Checkbox(checked = includeDaily, onCheckedChange = { includeDaily = it }); Text("Metricas diarias de Health Connect") }
+            Row { Checkbox(checked = includeIntakes, onCheckedChange = { includeIntakes = it }); Text("Detalle de tomas") }
+            Row { Checkbox(checked = includeEvents, onCheckedChange = { includeEvents = it }); Text("Eventos ON/OFF y estado de animo") }
+            Row { Checkbox(checked = includeSports, onCheckedChange = { includeSports = it }); Text("Actividades deportivas") }
+            Row { Checkbox(checked = includeMixed, onCheckedChange = { includeMixed = it }); Text("Informe mixto") }
+        }
+
         LargeButton(
             text = if (reportGenerating) "Generando..." else "Generar informe PDF",
             onClick = {
                 reportGenerating = true
                 scope.launch {
                     try {
-                        val f = PdfReportGenerator(app).generate(app.healthConnect, app.medicationRepository, app.tremorDao, 30)
+                        val f = PdfReportGenerator(app).generate(app.healthConnect, app.medicationRepository, app.tremorDao, 30, null, null, includeMetrics, includeDaily, includeIntakes, includeEvents, includeSports, includeMixed)
                         generatedReportFile = f
                         Toast.makeText(context, "PDF guardado en: ${f.absolutePath}", Toast.LENGTH_SHORT).show()
                     } catch (e: Exception) {
