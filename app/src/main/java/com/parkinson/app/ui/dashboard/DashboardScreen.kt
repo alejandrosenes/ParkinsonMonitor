@@ -55,8 +55,12 @@ fun DashboardScreen(
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var doseStruck by remember { mutableStateOf(false) }
+    var showMoodEffect by remember { mutableStateOf(false) }
+    var moodObs by remember { mutableStateOf("") }
+    var moodDate by remember { mutableStateOf("") }
     var struckDoseText by remember { mutableStateOf<String?>(null) }
 
+    Box(Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -163,7 +167,39 @@ fun DashboardScreen(
                     Text("4 \uD83D\uDE42")
                     Text("5 \uD83D\uDE04")
                 }
-                Button(onClick = { vm.recordMood(selectedMood) }, modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = moodObs,
+                    onValueChange = { moodObs = it },
+                    label = { Text("Observaciones") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Button(onClick = {
+                    val c = java.util.Calendar.getInstance()
+                    android.app.DatePickerDialog(ctx, { _, y, m, d -> moodDate = "%02d/%02d/%04d".format(d, m + 1, y) }, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH)).show()
+                }) { Text(if (moodDate.isBlank()) "Fecha" else moodDate) }
+                Button(onClick = {
+                    val atMillis = try {
+                        val parts = moodDate.split("/")
+                        val cal = java.util.Calendar.getInstance()
+                        if (parts.size == 3) {
+                            cal.set(java.util.Calendar.DAY_OF_MONTH, parts[0].toInt())
+                            cal.set(java.util.Calendar.MONTH, parts[1].toInt() - 1)
+                            cal.set(java.util.Calendar.YEAR, parts[2].toInt())
+                        }
+                        cal.set(java.util.Calendar.HOUR_OF_DAY, java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY))
+                        cal.set(java.util.Calendar.MINUTE, java.util.Calendar.getInstance().get(java.util.Calendar.MINUTE))
+                        cal.set(java.util.Calendar.SECOND, 0)
+                        cal.timeInMillis
+                    } catch (_: Exception) { System.currentTimeMillis() }
+                    vm.recordMood(selectedMood, moodObs, atMillis)
+                    showMoodEffect = true
+                    scope.launch {
+                        kotlinx.coroutines.delay(2200)
+                        showMoodEffect = false
+                        moodObs = ""
+                        moodDate = ""
+                    }
+                }, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.registrar_estado_animo) + " ($selectedMood)")
                 }
             }
@@ -172,5 +208,19 @@ fun DashboardScreen(
 
         Spacer(Modifier.height(8.dp))
 
+    }
+    if (showMoodEffect) {
+        Box(
+            Modifier
+                .fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Surface(Modifier.fillMaxSize(), color = Color(0xCC1B5E20)) {}
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("\u2713", style = MaterialTheme.typography.displayLarge, color = Color.White, fontWeight = FontWeight.Bold)
+                Text("Estado de animo registrado", style = MaterialTheme.typography.headlineMedium, color = Color.White, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
     }
 }

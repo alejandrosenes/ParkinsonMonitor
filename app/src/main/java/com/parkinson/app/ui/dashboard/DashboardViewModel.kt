@@ -132,9 +132,9 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun recordMood(score: Int) {
+    fun recordMood(score: Int, observation: String = "", atMillis: Long = System.currentTimeMillis()) {
         viewModelScope.launch {
-            val now = System.currentTimeMillis()
+            val now = atMillis
             parkinsonApp.healthConnect.writeSymptom(
                 com.parkinson.app.domain.models.SymptomEpisode(
                     type = com.parkinson.app.domain.models.SymptomType.MOOD,
@@ -142,7 +142,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
                     startTime = now,
                     endTime = now + 60 * 1000L,
                     source = "dashboard_mood",
-                    notes = "mood=$score"
+                    notes = if (observation.isBlank()) "mood=$score" else "mood=$score; obs=$observation"
                 )
             )
         }

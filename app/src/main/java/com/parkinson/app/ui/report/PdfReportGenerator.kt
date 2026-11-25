@@ -29,10 +29,19 @@ class PdfReportGenerator(private val context: Context) {
         health: HealthConnectManager,
         repo: MedicationRepository,
         tremorDao: TremorDao,
-        days: Int
+        days: Int = 30,
+        startMillis: Long? = null,
+        endMillis: Long? = null,
+        includeMetrics: Boolean = true,
+        includeDaily: Boolean = true,
+        includeIntakes: Boolean = true,
+        includeEvents: Boolean = true,
+        includeSports: Boolean = true,
+        includeMixed: Boolean = true
     ): File = withContext(Dispatchers.IO) {
-        val end = Instant.now()
-        val start = end.minusSeconds(days.toLong() * 24 * 3600)
+        val end = if (endMillis != null) Instant.ofEpochMilli(endMillis) else Instant.now()
+        val start = if (startMillis != null) Instant.ofEpochMilli(startMillis) else end.minusSeconds(days.toLong() * 24 * 3600)
+        val reportDays = java.time.Duration.between(start, end).toDays().toInt().coerceAtLeast(1)
         val symptoms = try { health.readSymptoms(start, end) } catch (e: Exception) {
             Log.w("PdfReport", "readSymptoms failed", e); emptyList()
         }
@@ -60,13 +69,11 @@ class PdfReportGenerator(private val context: Context) {
             sportMinutesByType[type] = (sportMinutesByType[type] ?: 0L) + java.time.Duration.between(e.startTime, e.endTime).toMinutes()
         }
 
-        val tremor = symptoms.count { it.type.name == "TREMOR" }
-        val dysk = symptoms.count { it.type.name == "DYSKINESIA" }
         val avgSeverity = if (symptoms.isNotEmpty()) symptoms.map { it.severity }.average() else 0.0
 
         val dir = context.getExternalFilesDir("reports") ?: context.filesDir.resolve("reports")
         dir.mkdirs()
-        val file = File(dir, "parkinson_report_${days}d_${System.currentTimeMillis()}.pdf")
+        val file = File(dir, "parkinson_report_${reportDays}d_${System.currentTimeMillis()}.pdf")
 
         try {
             val writer = PdfWriter(file)
@@ -79,15 +86,12 @@ class PdfReportGenerator(private val context: Context) {
             doc.add(Paragraph(" "))
 
             // Summary table
+            if (includeMetrics) {
             val table = Table(UnitValue.createPercentArray(floatArrayOf(60f, 40f))).useAllAvailableWidth()
             table.addCell("Metrica")
             table.addCell("Valor")
             table.addCell("Episodios de sintomas")
             table.addCell(symptoms.size.toString())
-            table.addCell("  - Temblor")
-            table.addCell(tremor.toString())
-            table.addCell("  - Discinesia")
-            table.addCell(dysk.toString())
             table.addCell("Severidad media")
             table.addCell(String.format(Locale.getDefault(), "%.2f", avgSeverity))
             table.addCell("Tomas de medicacion")
@@ -95,13 +99,13 @@ class PdfReportGenerator(private val context: Context) {
             table.addCell("Pasos (Health)")
             table.addCell(stepsTotal.toString())
             table.addCell("Pasos media/dia")
-            table.addCell(if (days > 0) (stepsTotal / days).toString() else "0")
+            table.addCell(if (reportDays > 0) (stepsTotal / reportDays).toString() else "0")
             table.addCell("FC media/min/max")
             table.addCell("$hrAvg / $hrMin / $hrMax bpm")
             table.addCell("Horas de sueno")
             table.addCell("${sleepMinutes / 60}h ${sleepMinutes % 60}m")
             table.addCell("Sueno media/dia")
-            val sleepPerDay = if (days > 0) sleepMinutes / days else 0L
+            val sleepPerDay = if (reportDays > 0) sleepMinutes / reportDays else 0L
             table.addCell("${sleepPerDay / 60}h ${sleepPerDay % 60}m")
             table.addCell("Actividades deportivas (eventos)")
             table.addCell(sports.size.toString())
@@ -111,12 +115,14 @@ class PdfReportGenerator(private val context: Context) {
                 table.addCell("${mins / 60}h ${mins % 60}m")
             }
             doc.add(table)
+            }
 
             // Daily Health Connect metrics
+            if (includeDaily) {
             doc.add(Paragraph(" "))
             doc.add(Paragraph("Metricas diarias de Health Connect:").setBold())
             val zone = java.time.ZoneId.systemDefault()
-            val daysList = (0 until days).map { start.atZone(zone).toLocalDate().plusDays(it.toLong()) }
+            val daysList = (0 until reportDays).map { start.atZone(zone).toLocalDate().plusDays(it.toLong()) }
             val daySteps = java.util.LinkedHashMap<java.time.LocalDate, Long>()
             val dayHr = java.util.LinkedHashMap<java.time.LocalDate, MutableList<Int>>()
             val daySleep = java.util.LinkedHashMap<java.time.LocalDate, Long>()
@@ -147,18 +153,20 @@ class PdfReportGenerator(private val context: Context) {
             td.addCell("Fecha")
             td.addCell("Pasos")
             td.addCell("FC media")
-            td.addCell("Sueno (min)")
-            td.addCell("Ejercicio (min)")
+            td.addCell("Sueno")
+            td.addCell("Ejercicio")
             daysList.forEach { d ->
                 td.addCell(d.toString())
                 td.addCell((daySteps[d] ?: 0L).toString())
                 val hrVals = dayHr[d] ?: emptyList()
                 td.addCell(if (hrVals.isNotEmpty()) (hrVals.average().toInt()).toString() else "-")
-                td.addCell((daySleep[d] ?: 0L).toString())
-                td.addCell((dayExercise[d] ?: 0L).toString())
+                td.addCell(formatMinutes(daySleep[d] ?: 0L))
+                td.addCell(formatMinutes(dayExercise[d] ?: 0L))
             }
             doc.add(td)
+            }
 
+            if (includeIntakes) {
             doc.add(Paragraph(" "))
             doc.add(Paragraph("Detalle de tomas:").setBold())
             if (filteredIntakes.isEmpty()) {
@@ -175,7 +183,9 @@ class PdfReportGenerator(private val context: Context) {
                 }
                 doc.add(t2)
             }
+            }
 
+            if (includeEvents) {
             doc.add(Paragraph(" "))
             doc.add(Paragraph("Eventos ON/OFF y estado de animo:").setBold())
             val moodEvents = symptoms.filter { it.type.name == "ON" || it.type.name == "OFF" || it.type.name == "MOOD" }
@@ -197,7 +207,9 @@ class PdfReportGenerator(private val context: Context) {
                 }
                 doc.add(tEvents)
             }
+            }
 
+            if (includeSports) {
             doc.add(Paragraph(" "))
             doc.add(Paragraph("Actividades deportivas:").setBold())
             if (sports.isEmpty()) {
@@ -208,13 +220,18 @@ class PdfReportGenerator(private val context: Context) {
                 t3.addCell("Duracion (min)")
                 t3.addCell("Fecha/Hora")
                 sports.sortedBy { it.startTime }.forEach { e ->
-                    t3.addCell(e.title?.takeIf { it.isNotBlank() } ?: "Deporte")
-                    t3.addCell(java.time.Duration.between(e.startTime, e.endTime).toMinutes().toString())
+                    val typeName = exerciseTypeName(e.exerciseType)
+                    val name = e.title?.takeIf { it.isNotBlank() } ?: typeName
+                    val mins = java.time.Duration.between(e.startTime, e.endTime).toMinutes()
+                    t3.addCell("$name ($typeName)")
+                    t3.addCell(formatMinutes(mins))
                     t3.addCell(sdf.format(Date(e.startTime.toEpochMilli())))
                 }
                 doc.add(t3)
             }
+            }
 
+            if (includeMixed) {
             doc.add(Paragraph(" "))
             doc.add(Paragraph("Informe mixto (cronologico):").setBold())
             data class MixedEvent(val time: Long, val label: String, val type: String)
@@ -277,6 +294,7 @@ class PdfReportGenerator(private val context: Context) {
             }
 
             doc.add(Paragraph(" "))
+            }
             doc.add(Paragraph("Pruebas de temblor (historico):").setBold())
             if (filteredTremor.isEmpty()) {
                 doc.add(Paragraph("Sin pruebas de temblor en el periodo."))
@@ -365,5 +383,28 @@ class PdfReportGenerator(private val context: Context) {
         val out = java.io.ByteArrayOutputStream()
         bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
         return out.toByteArray()
+    }
+
+    private fun exerciseTypeName(type: Int): String {
+        return when (type) {
+            0 -> "Correr"
+            1 -> "Caminar"
+            2 -> "Ciclismo"
+            3 -> "Gimnasio"
+            4 -> "Natacion"
+            5 -> "Yoga"
+            6 -> "Baile"
+            7 -> "Senderismo"
+            8 -> "Tenis"
+            9 -> "Futbol"
+            10 -> "Baloncesto"
+            else -> "Actividad $type"
+        }
+    }
+
+    private fun formatMinutes(mins: Long): String {
+        val h = mins / 60
+        val m = mins % 60
+        return if (h > 0) "${h}h ${m}m" else "${m}m"
     }
 }

@@ -125,7 +125,8 @@ class HealthConnectManager(private val context: Context) {
                 endZoneOffset = java.time.ZoneOffset.UTC,
                 exerciseType = ExerciseSessionRecord.EXERCISE_TYPE_OTHER_WORKOUT,
                 title = "Parkinson ${episode.type.name}",
-                notes = TremorParser.encode(episode)
+                notes = TremorParser.encode(episode),
+                metadata = Metadata(clientRecordId = episode.id)
             )
             c.insertRecords(listOf(record))
             true
@@ -140,14 +141,23 @@ class HealthConnectManager(private val context: Context) {
         return try {
             c.deleteRecords(
                 ExerciseSessionRecord::class,
-                TimeRangeFilter.between(
-                    java.time.Instant.ofEpochMilli(episode.startTime - 1000),
-                    java.time.Instant.ofEpochMilli(episode.endTime + 1000)
-                )
+                emptyList(),
+                listOf(episode.id)
             )
             true
         } catch (e: Exception) {
-            false
+            try {
+                c.deleteRecords(
+                    ExerciseSessionRecord::class,
+                    TimeRangeFilter.between(
+                        java.time.Instant.ofEpochMilli(episode.startTime - 1000),
+                        java.time.Instant.ofEpochMilli(episode.endTime + 1000)
+                    )
+                )
+                true
+            } catch (e2: Exception) {
+                false
+            }
         }
     }
 

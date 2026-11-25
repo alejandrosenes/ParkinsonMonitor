@@ -39,12 +39,14 @@ fun CaregiverScreen() {
     val intakes by vm.intakes.collectAsState()
     var symptomEvents by remember { mutableStateOf(emptyList<com.parkinson.app.domain.models.SymptomEpisode>()) }
     var exerciseEvents by remember { mutableStateOf(emptyList<androidx.health.connect.client.records.ExerciseSessionRecord>()) }
+    var sleepEvents by remember { mutableStateOf(emptyList<androidx.health.connect.client.records.SleepSessionRecord>()) }
     LaunchedEffect(Unit) {
         scope.launch {
             val end = java.time.Instant.now()
             val start = end.minusSeconds(365L*24*3600)
             symptomEvents = app.healthConnect.readSymptoms(start, end)
             exerciseEvents = app.healthConnect.readExerciseSessions(start, end)
+            sleepEvents = app.healthConnect.readSleepSessions(start, end)
         }
     }
     var careStart by remember { mutableStateOf("") }
@@ -65,6 +67,7 @@ fun CaregiverScreen() {
     var editMinute by remember { mutableStateOf("0") }
     var editSymptomType by remember { mutableStateOf(com.parkinson.app.domain.models.SymptomType.ON) }
     var editMood by remember { mutableStateOf(3f) }
+    var editObs by remember { mutableStateOf("") }
     var showEditDatePicker by remember { mutableStateOf(false) }
     val filteredIntakes = intakes.filter { intake ->
         val s = try { java.text.SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).parse(careStart)?.time } catch (_: Exception) { null } ?: Long.MIN_VALUE
@@ -82,7 +85,10 @@ fun CaregiverScreen() {
                 when (e.type) {
                     com.parkinson.app.domain.models.SymptomType.ON -> "Entrada en ON"
                     com.parkinson.app.domain.models.SymptomType.OFF -> "Entrada en OFF"
-                    com.parkinson.app.domain.models.SymptomType.MOOD -> "Estado de animo ${e.severity.toInt()}"
+                    com.parkinson.app.domain.models.SymptomType.MOOD -> {
+                        val obs = e.notes?.substringAfter("obs=", "")?.takeIf { it.isNotBlank() }
+                        if (obs.isNullOrBlank()) "Estado de animo ${e.severity.toInt()}" else "Estado de animo ${e.severity.toInt()}: $obs"
+                    }
                     else -> e.type.name
                 },
                 null,
@@ -92,6 +98,13 @@ fun CaregiverScreen() {
             PatientEvent(
                 e.startTime.toEpochMilli(),
                 "Ejercicio (Health Connect): ${(e.title?.takeIf { it.isNotBlank() } ?: "Deporte")} ${java.time.Duration.between(e.startTime, e.endTime).toMinutes()}m",
+                null,
+                null
+            )
+        } + sleepEvents.map { e ->
+            PatientEvent(
+                e.startTime.toEpochMilli(),
+                "Sueno (Health Connect): ${java.time.Duration.between(e.startTime, e.endTime).toMinutes()}m",
                 null,
                 null
             )
@@ -255,6 +268,7 @@ fun CaregiverScreen() {
                         if (editSymptomType == com.parkinson.app.domain.models.SymptomType.MOOD) {
                             Text("Estado de animo: ${editMood.toInt()}")
                             Slider(value = editMood, onValueChange = { editMood = it }, valueRange = 1f..5f, steps = 3)
+                            OutlinedTextField(value = editObs, onValueChange = { editObs = it }, label = { Text("Observaciones") })
                         }
                     }
                 },
@@ -282,7 +296,9 @@ fun CaregiverScreen() {
                             severity = newSeverity,
                             startTime = newStart,
                             endTime = newStart + 60000,
-                            notes = if (editSymptomType == com.parkinson.app.domain.models.SymptomType.MOOD) "mood=${editMood.toInt()}" else symp.notes
+                            notes = if (editSymptomType == com.parkinson.app.domain.models.SymptomType.MOOD) {
+                                "mood=${editMood.toInt()}" + if (editObs.isNotBlank()) "; obs=$editObs" else ""
+                            } else symp.notes
                         )
                         scope.launch {
                             val ok = app.healthConnect.updateSymptom(symp, newEp)
@@ -291,6 +307,7 @@ fun CaregiverScreen() {
                                 val start = end.minusSeconds(365L*24*3600)
                                 symptomEvents = app.healthConnect.readSymptoms(start, end)
                                 exerciseEvents = app.healthConnect.readExerciseSessions(start, end)
+                                sleepEvents = app.healthConnect.readSleepSessions(start, end)
                                 editingSymptom = null
                             }
                         }
@@ -332,6 +349,7 @@ fun CaregiverScreen() {
                             editHour = cal.get(java.util.Calendar.HOUR_OF_DAY).toString()
                             editMinute = cal.get(java.util.Calendar.MINUTE).toString().padStart(2, '0')
                             if (symp.type == com.parkinson.app.domain.models.SymptomType.MOOD) editMood = symp.severity
+                            editObs = symp.notes?.substringAfter("obs=", "") ?: ""
                         }) { Text("Editar") }
                         TextButton(onClick = { pendingSymptom = symp }) { Text(stringResource(R.string.anular)) }
                         }
@@ -423,6 +441,7 @@ fun CaregiverScreen() {
                         val start = end.minusSeconds(365L*24*3600)
                         symptomEvents = app.healthConnect.readSymptoms(start, end)
                         exerciseEvents = app.healthConnect.readExerciseSessions(start, end)
+                        sleepEvents = app.healthConnect.readSleepSessions(start, end)
                         pendingSymptom = null
                     }
                 }) { Text("Sí") }
