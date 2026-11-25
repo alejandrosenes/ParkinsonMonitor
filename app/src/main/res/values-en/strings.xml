@@ -103,5 +103,23 @@
     <string name="abrir_grupo_telegram">Open Telegram group</string>
     <string name="no_se_pudo_abrir_salud_conectada">Could not open Health Connect</string>
     <string name="no_se_pudo_compartir">Could not share</string>
-</resources>
+    <string name="obs_title">Observaciones</string>
+    <string name="obs_label">Observacion</string>
+    <string name="obs_registered">Observacion Registrada</string>
+    <string name="mood_registered">Estado de animo registrado</string>
+    <string name="date_from">Desde</string>
+    <string name="date_to">Hasta</string>
+    <string name="open_report">Abrir informe</string>
+    <string name="analyze_ai">Analizar con IA</string>
+    <string name="section_metric">Metrica</string>
+    <string name="section_daily">Metricas diarias de Health Connect</string>
+    <string name="section_intakes">Detalle de tomas</string>
+    <string name="section_events">Eventos ON/OFF y estado de animo</string>
+    <string name="section_sports">Actividades deportivas</string>
+    <string name="section_mixed">Informe mixto</string>
+    <string name="confirm_delete">Estas seguro</string>
+    <string name="yes">Si</string>
+    <string name="no">No</string>
+    <string name="delete_entry">Borrar</string>
+    <string name="view_graph">Ver grafica</string></resources>
 
